@@ -3,11 +3,11 @@ library(purrr)
 library(tidyverse)
 library(iNEXT)
 
-# observations = simulation_results$observations
-# deployments = simulation_results$deployments
-
-deployments <- read.csv("../ArtisData/deployments.csv")
-observations <- read.csv("../ArtisData/observations.csv")
+observations = simulation_results$observations
+deployments = simulation_results$deployments
+# 
+# deployments <- read.csv("../ArtisData/deployments.csv")
+# observations <- read.csv("../ArtisData/observations.csv")
 
 Preprocess <- function(observations, deployments) {
   
@@ -40,7 +40,7 @@ Preprocess <- function(observations, deployments) {
 preprocessed_data <- Preprocess(observations, deployments)
 observations <- preprocessed_data$observations
 deployments <- preprocessed_data$deployments
-deployment_test <- observations %>% filter(deploymentID == "artis_27_wildlifecamera1")
+deployment_test <- observations %>% filter(deploymentID == "Deployment_2")
 
 Calculate_iNEXT <- function(observations, deployments) {
   deployments_inc_mats <- list()
@@ -73,7 +73,7 @@ Calculate_iNEXT <- function(observations, deployments) {
   return(Calculate_iNEXT_results)
 }
 
-#Calculate_iNEXT(observations, deployments)
+# Calculate_iNEXT(observations, deployments)
 
 check_deployment_asymptote <- function(deployments, observations, species_asymptote_threshold) {
   species_richness_estimates <- Calculate_iNEXT_results %>%
@@ -167,7 +167,7 @@ Deployment_window_calculator <- function(deployment_data, window_size, AsyEst, s
   return(result_df)
 }
 
-#Deployment_window_calculator(deployment_test, 600, 14, 1)
+# Deployment_window_calculator(deployment_test, 600, 14, 1)
 
 Observations_calculator <- function(observations_data, deployments_data, min_window, max_window, step_size, species_asymptote_threshold, deployment_asymptote_threshold) {
   check_asymptote_results_all <<- data.frame()
@@ -215,25 +215,8 @@ Observations_calculator <- function(observations_data, deployments_data, min_win
   return(Observations_calculator_results)
 }
 
-Observations_calculator(observations, deployments, min_window = 30, max_window = 390, step_size = 7, species_asymptote_threshold = .5, deployment_asymptote_threshold = 1)
+Observations_calculator(observations, deployments, min_window = 1, max_window = 370, step_size = 7, species_asymptote_threshold = .9, deployment_asymptote_threshold = 1)
 
-find_pareto_front <- function(data) {
-  pareto_front <- do.call(rbind, lapply(1:nrow(data), function(i) {
-    current_point <- data[i,]
-    is_dominated <- any(apply(data, 1, function(x) {
-      (x['Deployments_Reached_Asymptote_Ratio'] > current_point['Deployments_Reached_Asymptote_Ratio'] & x['Window_Size'] <= current_point['Window_Size']) |
-        (x['Deployments_Reached_Asymptote_Ratio'] >= current_point['Deployments_Reached_Asymptote_Ratio'] & x['Window_Size'] < current_point['Window_Size'])
-    }))
-    if (!is_dominated) return(current_point)
-    else return(NULL)
-  }))
-  pareto_front
-}
-
-deployment_asymptote_results <- check_deployment_asymptote(deployments, observations, 0.5)
-print(deployment_asymptote_results)
-
-pareto_front <- find_pareto_front(Observations_calculator_results$Summary_Results)
-print(pareto_front)
+Observations_calculator_results$Summary_Results
 
 
