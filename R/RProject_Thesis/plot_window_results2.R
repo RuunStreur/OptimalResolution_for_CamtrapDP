@@ -2,7 +2,7 @@ library(ggplot2)
 library(dplyr)
 library(lubridate)
 
-# Assume 'final_results' is loaded and available
+# Assume 'INTERRESULT_all_for_all' is loaded and available
 
 # Prepare the plotting versions of the INTERRESULT data frames
 PLOTTING_INTERRESULT_check_asymptote <- INTERRESULT_check_asymptote %>%
@@ -16,7 +16,6 @@ PLOTTING_INTERRESULT_check_asymptote <- INTERRESULT_check_asymptote %>%
 
 PLOTTING_INTERRESULT_all_windows_for_windowsize_calculator <- INTERRESULT_all_windows_for_windowsize_calculator %>%
   mutate(
-    Start_date = as.Date(sub(" -.*", "", Daterange), format = "%d/%m/%y"),
     End_date = as.Date(sub(".*- ", "", Daterange), format = "%d/%m/%y")
   )
 
@@ -41,7 +40,7 @@ window_sizes <- unique(PLOTTING_INTERRESULT_all_windows_for_windowsize_calculato
 plots <- lapply(window_sizes, function(ws) {
   data_to_plot <- PLOTTING_INTERRESULT_check_asymptote %>%
     filter(N_Days == ws)
-  ratio_exceeded <- final_results %>%
+  ratio_exceeded <- INTERRESULT_all_for_all %>%
     filter(Window_Size == ws) %>%
     pull(Ratio_Exceeded_Threshold)
   

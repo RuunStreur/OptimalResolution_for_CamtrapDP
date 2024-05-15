@@ -29,11 +29,11 @@ locations_sf <- st_as_sf(locations,
                          crs = 4326)
 
 locations_basemap <- get_tiles(locations_sf, provider = "Esri.WorldTopoMap")
-plot(locations_basemap)
-plot(locations_sf, add = TRUE, col = "red", pch = 16)
-distance_matrix <- st_distance(locations_sf)
-diag(distance_matrix) <- NA
-summary(as.vector(distance_matrix))
+# plot(locations_basemap)
+# plot(locations_sf, add = TRUE, col = "red", pch = 16)
+# distance_matrix <- st_distance(locations_sf)
+# diag(distance_matrix) <- NA
+# summary(as.vector(distance_matrix))
 
 par(mar=c(4,8,1,1))
 plot(0,
@@ -82,65 +82,65 @@ for(deployment_artis in deployments_artis$deploymentID){
 }
 
 
-plot(n_species~time_active,
-     data=deployments_artis,
-     #solid point symbol
-     pch=16,
-     #axis labels
-     xlab="Days active",
-     ylab="n. species detected")
+# plot(n_species~time_active,
+#      data=deployments_artis,
+#      #solid point symbol
+#      pch=16,
+#      #axis labels
+#      xlab="Days active",
+#      ylab="n. species detected")
 
-deployment <- "artis_17_wildlifecamera1"
-deploy_start <- deployments_artis$deploymentStart[deployments_artis$deploymentID==deployment]
-deploy_end <- deployments_artis$deploymentEnd[deployments_artis$deploymentID==deployment]
-deploy_obs <- observations_artis[observations_artis$deploymentID==deployment,]
-deploy_spec <- unique(deploy_obs$scientificName)
-deploy_days <- seq.Date(deploy_start,deploy_end,by="day")
-inc_mat <- matrix(0,length(deploy_spec),length(deploy_days))
-row.names(inc_mat) <- deploy_spec
-for(i in 1:length(deploy_days)){
-  currday <- deploy_days[i]
-  curr_spec <- deploy_obs$scientificName[deploy_obs$date==currday]
-  present_bool <- deploy_spec%in%curr_spec
-  inc_mat[,i]=as.numeric(present_bool)
-}
-
-deployments_inc_mats = list()
-deployments_inc_mats[[1]] = inc_mat
-names(deployments_inc_mats)[[1]] = deployment
-
-deployment <- "artis_23_wildlifecamera1"
-deploy_start <- deployments_artis$deploymentStart[deployments_artis$deploymentID==deployment]
-deploy_end <- deployments_artis$deploymentEnd[deployments_artis$deploymentID==deployment]
-deploy_obs <- observations_artis[observations_artis$deploymentID==deployment,]
-deploy_spec <- unique(deploy_obs$scientificName)
-deploy_days <- seq.Date(deploy_start,deploy_end,by="day")
-inc_mat <- matrix(0,length(deploy_spec),length(deploy_days))
-row.names(inc_mat) <- deploy_spec
-for(i in 1:length(deploy_days)){
-  currday <- deploy_days[i]
-  curr_spec <- deploy_obs$scientificName[deploy_obs$date==currday]
-  present_bool <- deploy_spec%in%curr_spec
-  inc_mat[,i]=as.numeric(present_bool)
-}
-
-deployments_inc_mats[[2]] = inc_mat
-#give this the name of our deployment
-names(deployments_inc_mats)[[2]] = deployment
-
-
-iNET_out <- iNEXT(deployments_inc_mats,
-                  q=c(0),
-                  datatype="incidence_raw",
-                  endpoint=300)
-plot(iNET_out)
-
-curveplot <- ggiNEXT(iNET_out, type = 1)
-
-curveplot + labs(y='Species richness', x='Deployment days')
-
-
-iNET_out$AsyEst
+# deployment <- "artis_17_wildlifecamera1"
+# deploy_start <- deployments_artis$deploymentStart[deployments_artis$deploymentID==deployment]
+# deploy_end <- deployments_artis$deploymentEnd[deployments_artis$deploymentID==deployment]
+# deploy_obs <- observations_artis[observations_artis$deploymentID==deployment,]
+# deploy_spec <- unique(deploy_obs$scientificName)
+# deploy_days <- seq.Date(deploy_start,deploy_end,by="day")
+# inc_mat <- matrix(0,length(deploy_spec),length(deploy_days))
+# row.names(inc_mat) <- deploy_spec
+# for(i in 1:length(deploy_days)){
+#   currday <- deploy_days[i]
+#   curr_spec <- deploy_obs$scientificName[deploy_obs$date==currday]
+#   present_bool <- deploy_spec%in%curr_spec
+#   inc_mat[,i]=as.numeric(present_bool)
+# }
+# 
+# deployments_inc_mats = list()
+# deployments_inc_mats[[1]] = inc_mat
+# names(deployments_inc_mats)[[1]] = deployment
+# 
+# deployment <- "artis_23_wildlifecamera1"
+# deploy_start <- deployments_artis$deploymentStart[deployments_artis$deploymentID==deployment]
+# deploy_end <- deployments_artis$deploymentEnd[deployments_artis$deploymentID==deployment]
+# deploy_obs <- observations_artis[observations_artis$deploymentID==deployment,]
+# deploy_spec <- unique(deploy_obs$scientificName)
+# deploy_days <- seq.Date(deploy_start,deploy_end,by="day")
+# inc_mat <- matrix(0,length(deploy_spec),length(deploy_days))
+# row.names(inc_mat) <- deploy_spec
+# for(i in 1:length(deploy_days)){
+#   currday <- deploy_days[i]
+#   curr_spec <- deploy_obs$scientificName[deploy_obs$date==currday]
+#   present_bool <- deploy_spec%in%curr_spec
+#   inc_mat[,i]=as.numeric(present_bool)
+# }
+# 
+# deployments_inc_mats[[2]] = inc_mat
+# #give this the name of our deployment
+# names(deployments_inc_mats)[[2]] = deployment
+# 
+# 
+# iNET_out <- iNEXT(deployments_inc_mats,
+#                   q=c(0),
+#                   datatype="incidence_raw",
+#                   endpoint=300)
+# plot(iNET_out)
+# 
+# curveplot <- ggiNEXT(iNET_out, type = 1)
+# 
+# curveplot + labs(y='Species richness', x='Deployment days')
+# 
+# 
+# iNET_out$AsyEst
 
 
 

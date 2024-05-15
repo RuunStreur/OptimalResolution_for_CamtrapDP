@@ -1,6 +1,7 @@
 library(ggplot2)
 library(dplyr)
 library(gridExtra)
+library(tidyr)
 
 
 rarity_scores_log_normal <- simulation_results$rarity_scores
@@ -107,6 +108,7 @@ observation_plot <- ggplot(daily_observation_count, aes(x = date, y = num_observ
 
 # Create a Rank Abundance Diagram
 observation_counts <- observation_counts %>%
+  arrange(desc(count)) %>%
   mutate(rank = row_number(),  
          log_count = log10(count))
 
@@ -114,11 +116,12 @@ rad_plot <- ggplot(observation_counts, aes(x = rank, y = log_count)) +
   geom_point() +  
   geom_line() + 
   theme_minimal() +  
-  labs(x = "Rank", y = "Log10 of Total Observations", title = "Rank Abundance Diagram (RAD)")
+  labs(x = "Rank", y = "Log10 of Total Observations", title = "Rank Frequenct Diagram (RFD)")
 
 
 # Display all plots together
 grid.arrange(observation_plot, species_plot, nrow = 1, ncol = 2)
+plot(rad_plot)
 grid.arrange(original_plot, normalized_plot, nrow = 1, ncol = 2)
 
 
