@@ -5,7 +5,7 @@ library(dplyr)
 library(purrr)
 
 
-set.seed(1140)
+set.seed(114)
 
 simulate_multiple_deployments <- function(num_deployments, deployment_duration, num_observations, target_window =60 ,sdlog, num_species = 30) {
   all_observations <- tibble()
@@ -181,64 +181,66 @@ Calculate_iNEXT <- function(observations, deployments) {
   return(INTERRESULT_iNEXT)
 }
 
-Check_asymptote <- function(split_data, AsyEst, species_asymptote_threshold) {
+Check_asymptote <- function(split_data, AsyEst, species_asymptote_threshold, start_date, end_date) {
+  observed_species <- 0
   observed_species <- length(unique(split_data$scientificName))
   deployment_id <- unique(split_data$deploymentID)
   result_df <- data.frame(
     DeploymentID = deployment_id,
-    Start_date = min(split_data$date),
-    End_date = max(split_data$date),
-    N_Days = as.integer(max(split_data$date) - min(split_data$date) + 1),
+    # Start_date = min(split_data$date),
+    # End_date = max(split_data$date),
+    # N_Days = as.integer(max(split_data$date) - min(split_data$date) + 1),
+    Start_date = start_date,
+    End_date = end_date,
+    N_Days = as.integer(end_date - start_date + 1),
     AsyEst = AsyEst,
     Target = floor(AsyEst * species_asymptote_threshold),
     Observed = observed_species,
     Reached = observed_species >= floor(AsyEst * species_asymptote_threshold),
     stringsAsFactors = FALSE
   )
-  
+
   INTERRESULT_check_asymptote <<- rbind(INTERRESULT_check_asymptote, result_df)
-  
+
   return(result_df)
 }
+
 
 daterange_asymptote_ratio_calculator <- function(observations, deployments, AsyEsts, daterange, species_asymptote_threshold) {
   start_date <- as.Date(daterange$start)
   end_date <- as.Date(daterange$end)
-  
-  results <- list()  
-  
-  # Iterate over each deployment
+
+  results <- list()
+
   for (deployment_id in unique(deployments$deploymentID)) {
-    deployment_data <- observations %>% 
+    observations_for_deployment <- observations %>%
       filter(deploymentID == deployment_id, date >= start_date, date <= end_date)
-    
+
     # Check if deployment data is empty
-    if (nrow(deployment_data) == 0) {
+    if (nrow(observations_for_deployment) == 0) {
       results[[deployment_id]] <- NULL  # Explicitly assign NULL to represent no data
     } else {
-      # Get the asymptotic estimate for this deployment
-      AsyEst <- AsyEsts %>% 
+      AsyEst <- AsyEsts %>%
         filter(Assemblage == deployment_id, Diversity == "Species richness") %>%
         pull(Estimator)
-      
-      # Check if this window reaches asymptote
-      result <- Check_asymptote(deployment_data, AsyEst, species_asymptote_threshold)
+
+      result <- Check_asymptote(observations_for_deployment, AsyEst, species_asymptote_threshold, start_date, end_date)
       results[[deployment_id]] <- result
     }
   }
-  
+
   # Filter out NULL entries and calculate the ratio
   valid_results <- results[!sapply(results, is.null)]  # Remove NULL entries
   n_deployments <- length(valid_results)  # Count valid deployments
   reached_asymptote_ratio <- mean(sapply(valid_results, `[[`, "Reached"), na.rm = TRUE)  # Calculate mean of 'Reached' values
-  
+
   results_daterange <- data.frame(
     Daterange = paste(format(start_date, "%d/%m/%y"), "-", format(end_date, "%d/%m/%y")),
     N_Days = as.integer(end_date - start_date + 1),
     N_Deployments = n_deployments,
     Reached_Asymptote_Ratio = reached_asymptote_ratio
   )
-  
+
   return(data.frame(
     Daterange = paste(format(start_date, "%d/%m/%y"), "-", format(end_date, "%d/%m/%y")),
     N_Days = as.integer(end_date - start_date + 1),
@@ -376,7 +378,7 @@ whole_pipeline_simulate <- function(n_runs, num_species, num_deployments, num_ob
     
     # Extract the best result based on Simple Inverse
     top_simple_inverse <- optimized_values %>%
-      arrange(desc(Simple_Inverse)) %>%
+      arrange(desc(Simple_Inverse_mean)) %>%
       slice(1) %>%
       select(Window_Size, Ratio_Exceeded_Threshold)
     
@@ -398,7 +400,8 @@ whole_pipeline <- function(observations, deployments, min_window, max_window, st
   
   # Calculate iNEXT estimates
   print('Calculating iNEXT ...')
-  iNEXT_results <- Calculate_iNEXT(processed_data$observations, processed_data$deployments)
+  # iNEXT_results <- Calculate_iNEXT(processed_data$observations, processed_data$deployments)
+  iNEXT_results <- INTERRESULT_iNEXT
   
   # Run the all windows analysis
   print('Running analysis ...')
@@ -410,7 +413,7 @@ whole_pipeline <- function(observations, deployments, min_window, max_window, st
   
   # Extract the best result based on Simple Inverse
   top_simple_inverse <- metric_scores %>%
-    arrange(desc(Simple_Inverse)) %>%
+    arrange(desc(Simple_Inverse_mean)) %>%
     slice(1) %>%
     select(Window_Size, Ratio_Exceeded_Threshold)
   
@@ -420,29 +423,29 @@ whole_pipeline <- function(observations, deployments, min_window, max_window, st
 
 
 
-# results_pipeline_simulate <- whole_pipeline_simulate(n_runs = 1,
-#                                   num_deployments = 4,
-#                                   num_species = 30,
-#                                   num_observations_per_deployment = 20000,
-#                                   sdlog = 2.3,
-#                                   target_window_size = 84,
-#                                   min_window = 30, max_window = 300,
-#                                   step_size = 30,
-#                                   species_asymptote_threshold = 0.95,
-#                                   reached_asymptote_ratio_threshold = 1)
-
-
-
-deployments_artis <- read.csv("../ArtisData/deployments.csv")
-observations_artis <- read.csv("../ArtisData/observations.csv")
-results_pipeline <- whole_pipeline(observations_artis,
-                                  deployments_artis,
-                                  min_window = 30, 
-                                  max_window = 300, 
-                                  step_size = 30, 
-                                  species_asymptote_threshold = 0.5, 
+results_pipeline_simulate <- whole_pipeline_simulate(n_runs = 1,
+                                  num_deployments = 4,
+                                  num_species = 30,
+                                  num_observations_per_deployment = 20000,
+                                  sdlog = 2.3,
+                                  target_window_size = 84,
+                                  min_window = 30, max_window = 300,
+                                  step_size = 30,
+                                  species_asymptote_threshold = 0.95,
                                   reached_asymptote_ratio_threshold = 1)
 
-print(results_pipeline)
+
+
+# deployments_artis <- read.csv("../ArtisData/deployments.csv")
+observations_artis <- read.csv("../ArtisData/observations.csv")
+# results_pipeline <- whole_pipeline(observations_artis,
+#                                   deployments_artis,
+#                                   min_window = 30, 
+#                                   max_window = 300, 
+#                                   step_size = 30, 
+#                                   species_asymptote_threshold = 0.9, 
+#                                   reached_asymptote_ratio_threshold = .01)
+
+print(results_pipeline_simulate)
 
 # save(optimal_results, file = "100runs_20kobs_sd23_notarget")
