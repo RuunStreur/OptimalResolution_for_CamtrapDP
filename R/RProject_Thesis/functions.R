@@ -343,8 +343,8 @@ compute_advanced_metrics <- function(df) {
   
   df %>%
     mutate(
-      Simple_Inverse = ( Ratio_Exceeded_Threshold  / Window_Size),
-      Simple_Inverse_mean = ( Mean_Asymptote_Ratio  / Window_Size),
+      Inverse = ( Ratio_Exceeded_Threshold  / Window_Size),
+      Mean_inverse = ( Mean_Asymptote_Ratio  / Window_Size),
     )
 }
 
@@ -377,13 +377,13 @@ whole_pipeline_simulate <- function(n_runs, num_species, num_deployments, num_ob
     optimized_values <<- compute_advanced_metrics(all_windows_for_all_results)
     
     # Extract the best result based on Simple Inverse
-    top_simple_inverse <- optimized_values %>%
-      arrange(desc(Simple_Inverse_mean)) %>%
+    top_inverse <- optimized_values %>%
+      arrange(desc(Mean_inverse)) %>%
       slice(1) %>%
       select(Window_Size, Ratio_Exceeded_Threshold)
     
     # Store results in a list
-    results_list[[run]] <- top_simple_inverse
+    results_list[[run]] <- top_inverse
   }
   
   # Combine all results into a single dataframe
@@ -412,40 +412,40 @@ whole_pipeline <- function(observations, deployments, min_window, max_window, st
   metric_scores <<- compute_advanced_metrics(all_windows_for_all_results)
   
   # Extract the best result based on Simple Inverse
-  top_simple_inverse <- metric_scores %>%
-    arrange(desc(Simple_Inverse_mean)) %>%
+  top_inverse <- metric_scores %>%
+    arrange(desc(Mean_inverse)) %>%
     slice(1) %>%
     select(Window_Size, Ratio_Exceeded_Threshold)
   
 
-  return(top_simple_inverse)
+  return(top_inverse)
 }
 
 
 
-results_pipeline_simulate <- whole_pipeline_simulate(n_runs = 1,
-                                  num_deployments = 4,
-                                  num_species = 30,
-                                  num_observations_per_deployment = 20000,
-                                  sdlog = 2.3,
-                                  target_window_size = 84,
-                                  min_window = 30, max_window = 300,
-                                  step_size = 30,
-                                  species_asymptote_threshold = 0.95,
-                                  reached_asymptote_ratio_threshold = 1)
+# results_pipeline_simulate <- whole_pipeline_simulate(n_runs = 1,
+#                                   num_deployments = 4,
+#                                   num_species = 30,
+#                                   num_observations_per_deployment = 20000,
+#                                   sdlog = 2.3,
+#                                   target_window_size = 84,
+#                                   min_window = 30, max_window = 300,
+#                                   step_size = 30,
+#                                   species_asymptote_threshold = 0.95,
+#                                   reached_asymptote_ratio_threshold = 1)
 
 
 
-# deployments_artis <- read.csv("../ArtisData/deployments.csv")
+deployments_artis <- read.csv("../ArtisData/deployments.csv")
 observations_artis <- read.csv("../ArtisData/observations.csv")
-# results_pipeline <- whole_pipeline(observations_artis,
-#                                   deployments_artis,
-#                                   min_window = 30, 
-#                                   max_window = 300, 
-#                                   step_size = 30, 
-#                                   species_asymptote_threshold = 0.9, 
-#                                   reached_asymptote_ratio_threshold = .01)
+results_pipeline <- whole_pipeline(observations_artis,
+                                  deployments_artis,
+                                  min_window = 30,
+                                  max_window = 300,
+                                  step_size = 30,
+                                  species_asymptote_threshold = 0.5,
+                                  reached_asymptote_ratio_threshold = .5)
 
-print(results_pipeline_simulate)
+print(results_pipeline)
 
 # save(optimal_results, file = "100runs_20kobs_sd23_notarget")

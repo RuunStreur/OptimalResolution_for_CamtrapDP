@@ -1,8 +1,8 @@
 library(ggplot2)
 library(dplyr)
-library(gridExtra)  # Load gridExtra for arranging plots
-library(grid)       # Load grid for annotations
-library(fitdistrplus)  # Load fitdistrplus for fitting distributions
+library(gridExtra)
+library(grid)
+library(fitdistrplus)
 
 # Filter out the specific deployment ID
 filtered_observations <- observations_artis %>%
@@ -19,19 +19,25 @@ create_plot <- function(deployment_id) {
     summarise(count = n(), .groups = 'drop') %>%
     arrange(desc(count))
   
+  # print(paste("Deployment ID:", deployment_id))
+  # print(data_filtered)
+  
   # Fit a lognormal distribution to the counts
   fit <- fitdist(data_filtered$count, "lnorm")
   
   # Use one standard deviation above the mean of the fitted distribution to classify species
   meanlog <- fit$estimate["meanlog"]
   sdlog <- fit$estimate["sdlog"]
-  threshold <- exp(meanlog + sdlog)
-  data_filtered <- data_filtered %>%
-    mutate(classification = ifelse(count > threshold, "common", "rare"))
+  threshold <- exp(meanlog + .8*sdlog)
   
+  data_filtered <- data_filtered %>%
+    mutate(classification = ifelse(count > threshold, "Common", "Rare"))
+  
+
   ggplot(data_filtered, aes(x = reorder(scientificName, -count), y = count, fill = classification)) +
     geom_bar(stat = "identity") +
-    scale_fill_manual(values = c("common" = "green", "rare" = "blue")) +
+    scale_fill_manual(values = c("Common" = "darkolivegreen2", "Rare" = "lightsalmon"), 
+                      name = "Species Type Classification") +
     labs(
       title = paste(deployment_id)
     ) +
@@ -39,11 +45,25 @@ create_plot <- function(deployment_id) {
           axis.title.x = element_blank(),   # Remove x-axis title
           axis.ticks.x = element_blank(),   # Remove x-axis ticks
           axis.title.y = element_blank(),   # Remove y-axis title
-          legend.position = "none")         # Remove legend
+          legend.position = "right")        # Keep the legend
 }
 
 # Create plots for each deployment ID
 plots <- lapply(deployment_ids, create_plot)
+
+# Extract legend from one of the plots
+g_legend <- function(a.gplot){
+  tmp <- ggplotGrob(a.gplot)
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
+
+# Get the legend from the first plot
+legend <- g_legend(plots[[1]])
+
+# Remove legends from all individual plots
+plots <- lapply(plots, function(plot) plot + theme(legend.position = "none"))
 
 # Combine plots into a grid
 plot_grid <- arrangeGrob(grobs = plots, ncol = 5)  # Adjust ncol as needed for layout
@@ -52,8 +72,8 @@ plot_grid <- arrangeGrob(grobs = plots, ncol = 5)  # Adjust ncol as needed for l
 title <- textGrob("Number of observations per species for all deployments in Artis", gp = gpar(fontsize = 20, fontface = "bold"))
 y_label <- textGrob("Number of Observations", rot = 90, gp = gpar(fontsize = 20, fontface = "bold"))
 
-# Arrange the final plot with title and y-axis label
-final_plot <- grid.arrange(arrangeGrob(plot_grid, left = y_label, top = title))
+# Arrange the final plot with title, y-axis label, and legend
+final_plot <- grid.arrange(arrangeGrob(plot_grid, left = y_label, top = title), legend, ncol = 2, widths = c(4/5, 1/5))
 
 # Draw the final plot
 grid.newpage()
