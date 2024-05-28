@@ -1,0 +1,7 @@
+"species_asymptote_threshold","reached_asymptote_ratio_threshold","Window_Size_mean","Mean_Asymptote_Ratio","Window_Size_inverse","Ratio_Exceeded_Threshold"
+0.22,0.001,7,0.565412443581458,7,1
+0.22,0.5,7,0.565412443581458,7,0.690140845070423
+0.22,1,7,0.565412443581458,112,0.75
+0.9,0.001,364,0.333333333333333,168,1
+0.9,0.5,364,0.333333333333333,7,0
+0.9,1,364,0.333333333333333,7,0
