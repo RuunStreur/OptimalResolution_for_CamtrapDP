@@ -411,200 +411,22 @@ whole_pipeline_simulate <- function(n_runs, num_species, num_deployments, num_ob
 
 # Run the pipeline simulation
 results_pipeline_simulate <- whole_pipeline_simulate(n_runs = 100,
-                                                     num_deployments = 50,
-                                                     num_species = 30,
-                                                     num_observations_per_deployment = 5000,
+                                                     num_deployments = 4,
                                                      sdlog = 2.3,
-                                                     target_window_size = 70,
+                                                     num_observations_per_deployment = 10000,   ###
+                                                     num_species = 50,                         ###
+                                                     target_window_size = 140,                  ###
                                                      min_window = 7, max_window = 150,
                                                      step_size = 7,
                                                      species_asymptote_threshold = 0.95,
                                                      reached_asymptote_ratio_threshold = 1)
 
 # Print results
-print(results_pipeline_simulate)
 
 # Save results
 write_csv(results_pipeline_simulate, file.path('C:/Users/ruuns/Documents/GitHub/Thesis2024/R/RProject_Thesis/', 
-                                               "RESULTS_5kObs_30Spec_parallel_50deps.csv"))
+                                               "RESULTS2_10kObs_50Spec_target140.csv"))
 
+print(results_pipeline_simulate)
 # Stop the parallel cluster
 stopCluster(cl)
-
-# 
-# 
-# simulate_multiple_deployments <- function(num_deployments, deployment_duration, num_observations, target_window =60 ,sdlog, num_species = 30) {
-#   all_observations <- tibble()
-#   deployments_data <- tibble()
-#   
-#   rarity_scores_log_normal <- rlnorm(num_species, meanlog = 0, sdlog = sdlog)
-#   rarity_scores_log_normal <- rarity_scores_log_normal / sum(rarity_scores_log_normal)
-#   species_names <- paste0("Species_", seq_len(num_species))
-#   names(rarity_scores_log_normal) <- species_names
-#   
-#   for (dep in 1:num_deployments) {
-#     start_date <- today()
-#     end_date <- start_date + days(deployment_duration)
-#     dates <- seq.Date(start_date, end_date, by = "day")
-#     avg_daily_observations <- round(num_observations / length(dates))
-#     
-#     deployment_id <- paste("Deployment", dep, sep = "_")
-#     
-#     for (i in seq_along(dates)) {
-#       daily_obs_count <- sample(round(avg_daily_observations * 0.3):round(avg_daily_observations * 1.7), 1)
-#       observed_species <- sample(species_names, size = daily_obs_count, replace = TRUE, prob = rarity_scores_log_normal)
-#       
-#       daily_data <- tibble(
-#         observationID = paste("obs", deployment_id, dates[i], seq_len(daily_obs_count), sep = "_"),
-#         deploymentID = rep(deployment_id, daily_obs_count),
-#         date = rep(dates[i], daily_obs_count),
-#         eventStart = rep(dates[i], daily_obs_count),
-#         scientificName = observed_species,
-#         count = rep(1, daily_obs_count)
-#       )
-#       
-#       all_observations <- bind_rows(all_observations, daily_data)
-#     }
-#     
-#     deployments_data <- bind_rows(deployments_data, tibble(
-#       deploymentID = deployment_id,
-#       cameraID = paste("Camera", dep, sep = "_"),
-#       deploymentStart = start_date,
-#       deploymentEnd = end_date,
-#       latitude = runif(1, 52.35, 52.37),
-#       longitude = runif(1, 4.91, 4.92),
-#       cameraModel = "Simulated_Camera_Model",
-#       n_species = n_distinct(all_observations$scientificName[all_observations$deploymentID == deployment_id])
-#     ))
-#   }
-#   
-#   return(list(observations = all_observations, deployments = deployments_data, rarity_scores = rarity_scores_log_normal))
-# }
-# 
-
-
-
-
-# 
-# simulate_multiple_deployments_target <- function(num_deployments, deployment_duration, num_observations, target_window, sdlog, num_species = 30) {
-#   all_observations <- tibble()
-#   deployments_data <- tibble()
-#   
-#   rarity_scores_log_normal <- rlnorm(num_species, meanlog = 0, sdlog = sdlog)
-#   rarity_scores_log_normal <- rarity_scores_log_normal / sum(rarity_scores_log_normal)
-#   species_names <- paste0("Species_", seq_len(num_species))
-#   names(rarity_scores_log_normal) <- species_names
-#   
-#   for (dep in 1:num_deployments) {
-#     start_date <- today()
-#     end_date <- start_date + days(deployment_duration)
-#     dates <- seq.Date(start_date, end_date, by = "day")
-#     avg_daily_observations <- round(num_observations / length(dates))
-#     
-#     deployment_id <- paste("Deployment", dep, sep = "_")
-#     species_spotted <- vector("list", length = ceiling(deployment_duration / target_window))
-#     base_rarity_scores <- rarity_scores_log_normal  
-#     
-#     for (i in seq_along(dates)) {
-#       day_in_window <- i %% target_window
-#       window_index <- (i %/% target_window) + 1
-#       
-#       # Adjust rarity scores if we are 7 days before reaching a new window
-#       if (day_in_window >= target_window - 7 && day_in_window < target_window) {
-#         not_seen <- setdiff(species_names, unlist(species_spotted[window_index]))
-#         rarity_scores_log_normal[not_seen] <- rarity_scores_log_normal[not_seen] * 20
-#         rarity_scores_log_normal <- rarity_scores_log_normal / sum(rarity_scores_log_normal)
-#       }
-#       
-#       # Reset rarity scores to original distribution right after reaching new window
-#       if (day_in_window == 1) {
-#         rarity_scores_log_normal <- base_rarity_scores
-#         species_spotted[[window_index]] <- character()
-#       }
-#       
-#       daily_obs_count <- sample(round(avg_daily_observations * 0.3):round(avg_daily_observations * 1.7), 1)
-#       observed_species <- sample(species_names, size = daily_obs_count, replace = TRUE, prob = rarity_scores_log_normal)
-#       species_spotted[[window_index]] <- c(species_spotted[[window_index]], observed_species)
-#       
-#       daily_data <- tibble(
-#         observationID = paste("obs", deployment_id, dates[i], seq_len(daily_obs_count), sep = "_"),
-#         deploymentID = rep(deployment_id, daily_obs_count),
-#         date = rep(dates[i], daily_obs_count),
-#         eventStart = rep(dates[i], daily_obs_count),
-#         scientificName = observed_species,
-#         count = rep(1, daily_obs_count)
-#       )
-#       
-#       all_observations <- bind_rows(all_observations, daily_data)
-#     }
-#     
-#     deployments_data <- bind_rows(deployments_data, tibble(
-#       deploymentID = deployment_id,
-#       cameraID = paste("Camera", dep, sep = "_"),
-#       deploymentStart = start_date,
-#       deploymentEnd = end_date,
-#       latitude = runif(1, 52.35, 52.37),
-#       longitude = runif(1, 4.91, 4.92),
-#       cameraModel = "Simulated_Camera_Model",
-#       n_species = n_distinct(all_observations$scientificName[all_observations$deploymentID == deployment_id])
-#     ))
-#   }
-#   
-#   return(list(observations = all_observations, deployments = deployments_data, rarity_scores = rarity_scores_log_normal))
-# }
-
-
-
-# results_pipeline_simulate <- whole_pipeline_simulate(n_runs = 1,
-#                                   num_deployments = 4,
-#                                   num_species = 30,
-#                                   num_observations_per_deployment = 20000,
-#                                   sdlog = 2.3,
-#                                   target_window_size = 84,
-#                                   min_window = 30, max_window = 300,
-#                                   step_size = 30,
-#                                   species_asymptote_threshold = 0.95,
-#                                   reached_asymptote_ratio_threshold = 1)
-
-# whole_pipeline_simulate <- function(n_runs, num_species, num_deployments, num_observations_per_deployment, sdlog, target_window_size, min_window, max_window, step_size, species_asymptote_threshold, reached_asymptote_ratio_threshold) {
-#   results_list <- vector("list", n_runs)
-#   
-#   for (run in 1:n_runs) {
-#     
-#     # Simulate data
-#     print(paste('Simulating data for run',run,'...'))
-#     simulation_results <<- simulate_multiple_deployments(num_deployments, 365, num_observations_per_deployment, target_window_size, sdlog = sdlog)
-#     observations <- simulation_results$observations
-#     deployments <- simulation_results$deployments
-#     
-#     # Process data
-#     processed_data <<- Preprocess(observations, deployments)
-#     observations <<- processed_data$observations
-#     deployments <<- processed_data$deployments
-#     
-#     # Calculate iNEXT estimates
-#     print(paste('Calculating iNEXT for run', run, '...'))
-#     iNEXT_results <- Calculate_iNEXT(observations, deployments)
-#     
-#     # Run the all windows analysis
-#     print(paste('Running analysis for run', run, '...'))
-#     
-#     all_windows_for_all_results <- all_windows_for_all(observations, deployments, iNEXT_results, min_window, max_window, step_size, species_asymptote_threshold, reached_asymptote_ratio_threshold)
-#     
-#     # Compute advanced metrics
-#     optimized_values <<- compute_advanced_metrics(all_windows_for_all_results)
-#     
-#     # Extract the best result based on Simple Inverse
-#     top_inverse <- optimized_values %>%
-#       arrange(desc(Mean_inverse)) %>%
-#       slice(1) %>%
-#       select(Window_Size, Ratio_Exceeded_Threshold)
-#     
-#     # Store results in a list
-#     results_list[[run]] <- top_inverse
-#   }
-#   
-#   # Combine all results into a single dataframe
-#   final_output_simulate <- bind_rows(results_list, .id = "Run")
-#   return(final_output_simulate)
-# }
