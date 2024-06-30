@@ -15,13 +15,14 @@ observations_artis$date <- as.Date(observations_artis$eventStart)
 
 deployments_artis$deploymentStart <- as.Date(deployments_artis$deploymentStart)
 deployments_artis$deploymentEnd <- as.Date(deployments_artis$deploymentEnd)
-deployments_artis$time_active <- deployments_artis$deploymentEnd - deployments_artis$deploymentStart
-deployments_artis$time_active <- as.numeric(deployments_artis$time_active)
+
 
 deployments_artis$deploymentEnd[deployments_artis$deploymentEnd > as.Date('2023-01-01')] <- as.Date('2023-01-01')
 deployments_artis <- deployments_artis[deployments_artis$deploymentID != "artis_20_03272023_wildlifecamera1", ]
 observations_artis <- observations_artis[observations_artis$deploymentID != "artis_20_03272023_wildlifecamera1", ]
 
+deployments_artis$time_active <- deployments_artis$deploymentEnd - deployments_artis$deploymentStart
+deployments_artis$time_active <- as.numeric(deployments_artis$time_active)
 
 locations <- deployments_artis[c("deploymentID","longitude", "latitude")]
 locations_sf <- st_as_sf(locations,
@@ -142,5 +143,23 @@ for(deployment_artis in deployments_artis$deploymentID){
 # 
 # iNET_out$AsyEst
 
+# Assuming the dataframe is named df
+# You can replace 'df' with the actual name of your dataframe
+
+df<-deployments_artis
+
+# Calculate the mean and standard deviation for time_active
+mean_time_active <- mean(df$time_active, na.rm = TRUE)
+sd_time_active <- sd(df$time_active, na.rm = TRUE)
+
+# Calculate the mean and standard deviation for n_species
+mean_n_species <- mean(df$n_species, na.rm = TRUE)
+sd_n_species <- sd(df$n_species, na.rm = TRUE)
+
+# Print the results
+cat("Mean of time_active:", mean_time_active, "\n")
+cat("Standard deviation of time_active:", sd_time_active, "\n")
+cat("Mean of n_species:", mean_n_species, "\n")
+cat("Standard deviation of n_species:", sd_n_species, "\n")
 
 

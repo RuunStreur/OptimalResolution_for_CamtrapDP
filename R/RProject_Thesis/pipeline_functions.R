@@ -87,7 +87,7 @@ Calculate_iNEXT <- function(observations, deployments) {
   return(INTERRESULT_iNEXT)
 }
 
-Check_asymptote <- function(split_data, AsyEst, species_asymptote_threshold, start_date, end_date, common_ratio = NULL, use_common_ratio = FALSE) {
+Check_asymptote <- function(split_data, AsyEst, species_threshold, start_date, end_date, common_ratio = NULL, use_common_ratio = FALSE) {
   # Calculate the number of observed species
   observed_species <- length(unique(split_data$scientificName))
   
@@ -98,7 +98,7 @@ Check_asymptote <- function(split_data, AsyEst, species_asymptote_threshold, sta
   target <- if (use_common_ratio && !is.null(common_ratio)) {
     max(floor(common_ratio * AsyEst), 1)
   } else {
-    max(floor(AsyEst * species_asymptote_threshold), 1)
+    max(floor(AsyEst * species_threshold), 1)
   }
   
   # Create a data frame to store the result
@@ -120,7 +120,7 @@ Check_asymptote <- function(split_data, AsyEst, species_asymptote_threshold, sta
   return(result_df)
 }
 
-daterange_asymptote_ratio_calculator <- function(observations, deployments, AsyEsts, daterange, species_asymptote_threshold, common_ratios = NULL, use_common_ratio = FALSE) {
+daterange_asymptote_ratio_calculator <- function(observations, deployments, AsyEsts, daterange, species_threshold, common_ratios = NULL, use_common_ratio = FALSE) {
   start_date <- as.Date(daterange$start)
   end_date <- as.Date(daterange$end)
   
@@ -147,7 +147,7 @@ daterange_asymptote_ratio_calculator <- function(observations, deployments, AsyE
       }
       
       # Check asymptote and store the result
-      result <- Check_asymptote(observations_for_deployment, AsyEst, species_asymptote_threshold, start_date, end_date, common_ratio, use_common_ratio)
+      result <- Check_asymptote(observations_for_deployment, AsyEst, species_threshold, start_date, end_date, common_ratio, use_common_ratio)
       results[[deployment_id]] <- result
     }
   }
@@ -168,7 +168,7 @@ daterange_asymptote_ratio_calculator <- function(observations, deployments, AsyE
   return(results_daterange)
 }
 
-all_windows_for_windowsize_calculator <- function(observations, deployments, AsyEsts, window_size, species_asymptote_threshold, reached_asymptote_ratio_threshold, common_ratios = NULL, use_common_ratio = FALSE) {
+all_windows_for_windowsize_calculator <- function(observations, deployments, AsyEsts, window_size, species_threshold, reached_asymptote_ratio_threshold, common_ratios = NULL, use_common_ratio = FALSE) {
   # Calculate step size and date range
   step <- window_size
   first_observation_date <- min(observations$date)
@@ -188,7 +188,7 @@ all_windows_for_windowsize_calculator <- function(observations, deployments, Asy
   # Calculate asymptote ratio for each date range window
   results <- mapply(function(start, end) {
     daterange <- list(start = start, end = end)
-    daterange_asymptote_ratio_calculator(observations, deployments, AsyEsts, daterange, species_asymptote_threshold, common_ratios, use_common_ratio)
+    daterange_asymptote_ratio_calculator(observations, deployments, AsyEsts, daterange, species_threshold, common_ratios, use_common_ratio)
   }, start_dates, end_dates, SIMPLIFY = FALSE)
   
   # Combine results into a single data frame
@@ -204,7 +204,7 @@ all_windows_for_windowsize_calculator <- function(observations, deployments, Asy
   return(results_df)
 }
 
-all_windows_for_all <- function(observations, deployments, AsyEsts, min_window, max_window, step_size, species_asymptote_threshold, reached_asymptote_ratio_threshold, common_ratios = NULL, use_common_ratio = FALSE) {
+all_windows_for_all <- function(observations, deployments, AsyEsts, min_window, max_window, step_size, species_threshold, reached_asymptote_ratio_threshold, common_ratios = NULL, use_common_ratio = FALSE) {
   # Initialize global data frames for storing intermediate results
   INTERRESULT_check_asymptote <<- data.frame(
     DeploymentID = character(),
@@ -237,7 +237,7 @@ all_windows_for_all <- function(observations, deployments, AsyEsts, min_window, 
       next
     }
     # Calculate results for the current window size
-    window_results <- all_windows_for_windowsize_calculator(observations, deployments, AsyEsts, window_size, species_asymptote_threshold, reached_asymptote_ratio_threshold, common_ratios, use_common_ratio)
+    window_results <- all_windows_for_windowsize_calculator(observations, deployments, AsyEsts, window_size, species_threshold, reached_asymptote_ratio_threshold, common_ratios, use_common_ratio)
     results[[as.character(window_size)]] <- window_results
   }
   
@@ -330,7 +330,7 @@ calculate_ratios <- function(observations_data) {
   return(results)
 }
 
-whole_pipeline <- function(observations, deployments, min_window, max_window, step_size, species_asymptote_threshold, reached_asymptote_ratio_threshold, use_common_ratio = FALSE) {
+whole_pipeline <- function(observations, deployments, min_window, max_window, step_size, species_threshold, reached_asymptote_ratio_threshold, use_common_ratio = FALSE) {
   # Initialize a list to store results
   results_list <- vector("list", 1)
   
@@ -351,7 +351,7 @@ whole_pipeline <- function(observations, deployments, min_window, max_window, st
   
   # Run analysis over all windows
   message('Running analysis ...')
-  all_windows_for_all_results <- all_windows_for_all(processed_data$observations, processed_data$deployments, iNEXT_results, min_window, max_window, step_size, species_asymptote_threshold, reached_asymptote_ratio_threshold, common_ratios, use_common_ratio)
+  all_windows_for_all_results <- all_windows_for_all(processed_data$observations, processed_data$deployments, iNEXT_results, min_window, max_window, step_size, species_threshold, reached_asymptote_ratio_threshold, common_ratios, use_common_ratio)
   
   # Compute metrics from the results
   INTERRESULT_metric_scores <<- compute_metrics(all_windows_for_all_results)
@@ -370,7 +370,7 @@ whole_pipeline <- function(observations, deployments, min_window, max_window, st
   
   # Compile the final results into a data frame
   result <- data.frame(
-    species_asymptote_threshold = species_asymptote_threshold,
+    species_threshold = species_threshold,
     reached_asymptote_ratio_threshold = reached_asymptote_ratio_threshold,
     top_mean_inverse,
     top_inverse
@@ -381,13 +381,14 @@ whole_pipeline <- function(observations, deployments, min_window, max_window, st
 
 deployments_artis <- read.csv("../ArtisData/deployments.csv")
 observations_artis <- read.csv("../ArtisData/observations.csv")
-results_pipeline <- whole_pipeline(observations_artis,
-                                   deployments_artis,
+
+results_pipeline <- whole_pipeline(observations = observations_artis,
+                                   deployments = deployments_artis,
                                    min_window = 7,
-                                   max_window = 100,
+                                   max_window = 365,
                                    step_size = 7,
-                                   species_asymptote_threshold = 0.22,
-                                   reached_asymptote_ratio_threshold = .9,
+                                   species_threshold = 0.9,
+                                   reached_asymptote_ratio_threshold = 0.01,
                                    use_common_ratio = FALSE)
 
 print(results_pipeline)

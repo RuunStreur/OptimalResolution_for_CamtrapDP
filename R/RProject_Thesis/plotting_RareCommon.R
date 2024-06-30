@@ -4,25 +4,10 @@ library(gridExtra)
 library(grid)
 library(fitdistrplus)
 
-
-deployments_artis <- read.csv("../ArtisData/deployments.csv")
-observations_artis <- read.csv("../ArtisData/observations.csv")
-
-find_pareto_front <- function(data) {
-  pareto_front <- do.call(rbind, lapply(1:nrow(data), function(i) {
-    current_point <- data[i,]
-    is_dominated <- any(apply(data, 1, function(x) {
-      (x['Mean_Asymptote_Ratio'] > current_point['Mean_Asymptote_Ratio'] & x['Window_Size'] <= current_point['Window_Size']) |
-        (x['Mean_Asymptote_Ratio'] >= current_point['Mean_Asymptote_Ratio'] & x['Window_Size'] < current_point['Window_Size'])
-    }))
-    if (!is_dominated) return(current_point)
-    else return(NULL)
-  }))
-  pareto_front
-}
+observations <- processed_data$observations
 
 # Filter out the specific deployment ID
-filtered_observations <- bird_observations %>%
+filtered_observations <- observations %>%
   filter(deploymentID != "artis_20_03272023_wildlifecamera1")
 
 # Get unique deployment IDs
@@ -52,7 +37,7 @@ calculate_ratios <- function(observations_data) {
     fit <- fitdist(data_filtered$count, "lnorm")
     meanlog <- fit$estimate["meanlog"]
     sdlog <- fit$estimate["sdlog"]
-    threshold <- exp(meanlog + .8 * sdlog)
+    threshold <- exp(meanlog + .7 * sdlog)
     
     data_filtered <- data_filtered %>%
       mutate(classification = ifelse(count > threshold, "Common", "Rare"))
@@ -138,7 +123,7 @@ plots <- lapply(plots, function(plot) plot + theme(legend.position = "none"))
 plot_grid <- arrangeGrob(grobs = plots, ncol = 5)  # Adjust ncol as needed for layout
 
 # Add a title and y-axis label
-title <- textGrob("Number of observations and classification of bird species for all deployments in Artis", gp = gpar(fontsize = 20, fontface = "bold"))
+title <- textGrob("Number of observations and classification of species for all deployments in Artis", gp = gpar(fontsize = 20, fontface = "bold"))
 y_label <- textGrob("Number of Observations", rot = 90, gp = gpar(fontsize = 20, fontface = "bold"))
 
 # Arrange the final plot with title, y-axis label, and legend

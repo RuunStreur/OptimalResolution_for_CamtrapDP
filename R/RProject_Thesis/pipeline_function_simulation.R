@@ -416,17 +416,18 @@ results_pipeline_simulate <- whole_pipeline_simulate(n_runs = 100,
                                                      num_observations_per_deployment = 10000,   ###
                                                      num_species = 50,                         ###
                                                      target_window_size = 140,                  ###
-                                                     min_window = 7, max_window = 150,
+                                                     min_window = 7, 
+                                                     max_window = 100,
                                                      step_size = 7,
                                                      species_asymptote_threshold = 0.95,
                                                      reached_asymptote_ratio_threshold = 1)
 
+print(results_pipeline_simulate)
 # Print results
 
 # Save results
 write_csv(results_pipeline_simulate, file.path('C:/Users/ruuns/Documents/GitHub/Thesis2024/R/RProject_Thesis/', 
                                                "RESULTS2_10kObs_50Spec_target140.csv"))
 
-print(results_pipeline_simulate)
 # Stop the parallel cluster
 stopCluster(cl)

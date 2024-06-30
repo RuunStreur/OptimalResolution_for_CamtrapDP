@@ -1,0 +1,269 @@
+---
+title: "MSc Data Science Thesis ahwEDA"
+author: "Ruun Streur"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+requiredPackages=c("sf","maptiles","terra","iNEXT","corrplot","e1071","MASS","car")
+library(sf)
+library(terra)
+library(maptiles)
+library(iNEXT)
+library(ggplot2)
+library(dplyr)
+```
+
+## Personal Information
+
+Student: *Ruun Streur*\
+StudentID: *12751901*\
+Email: *ruun.streur@student.uva.nl* \
+Project: *MSc Data Science Thesis: Assessing the optimal temporal resolution for the CampTrap DP standard - Exploratory Data Analysis*\
+Supervisor: *Dr. rer. nat. W.D. Kissling*\
+Submission date: *22/03/2024*\
+*Universiteit van Amsterdam*\
+
+## Data Context
+
+Due to the nature of the project this EDA will slightly defer from the standard Data Science EDA (provided by https://www.kaggle.com/code/ekami66/detailed-exploratory-data-analysis-with-python ). In this EDA the basic structure of the CamtrapDP standard format for Camera Trap data will be elaborated upon, and our personal dataset from the Artis Zoo in Amsterdam will be analysed. <br>
+Camera Trap Data Package (or Camtrap DP for short) is a community developed data exchange format for camera trap data. A Camtrap DP is a Frictionless Data Package that consists of <br>
+*datapackage.json*:	Metadata about the data package and camera trap project.\
+*deployments.csv*:	Table with camera trap placements (deployments).\
+*media.csv*:	        Table with media files recorded during deployments.\
+*observations.csv*:	Table with observations derived from the media files.\
+
+For this EDA only the deployments and observations data will be of use.
+
+## Observations data
+Data Loading
+```{r}
+deployments_artis <- read.csv("../ArtisData/deployments.csv")
+observations_artis <- read.csv("../ArtisData/observations.csv")
+
+deployments_artis$deploymentStart <- as.Date(deployments_artis$deploymentStart)
+deployments_artis$deploymentEnd <- as.Date(deployments_artis$deploymentEnd)
+
+```
+
+\newpage
+A slice of the dataframe observations_artis:
+```{r, echo=FALSE}
+knitr::kable(observations_artis[120:123, 0:3])
+knitr::kable(observations_artis[120:123, 4:7])
+knitr::kable(observations_artis[120:123, 8:13])
+knitr::kable(observations_artis[120:123, 14:19])
+knitr::kable(observations_artis[120:123, 20:22])
+
+```
+
+\newpage
+NaN Analysis
+```{r}
+ 
+colSums(is.na(observations_artis))
+```
+As we can see many columns contain a lot of NaN entries, most notably 'classificationProbability', 'individualID', 'behavior' with only NaN entries and all the bbox columns are mostly empty. The other columns, although not all complete, contain information that might be interesting.
+
+Column explanations:
+
+```{r, results='asis', echo=FALSE}
+cat("| Column                 | Definition                                                    |
+|------------------------|---------------------------------------------------------------|
+| observationID          | Unique identifier of the observation.                         |
+| deploymentID           | Identifier of the deployment the observation belongs to.       |
+| mediaID                | Identifier of the media file that was classified.              |
+| eventID                | Identifier of the event the observation belongs to.            |
+| eventStart             | Date and time at which the event started.                     |
+| eventEnd               | Date and time at which the event ended.                       |
+| observationType        | Type of the observation.                                      |
+| scientificName         | Scientific name of the observed individual(s).                |
+| count                  | Number of observed individuals.                               |
+| lifeStage              | Age class or life stage of the observed individual.            |
+| sex                    | Sex of the observed individual.                               |
+| classificationMethod   | Method (most recently) used to classify the observation.      |
+| classifiedBy           | Name or identifier of person or AI that classified the observation. |
+| observationComments    | Comments or notes about the observation.                      |")
+
+
+```
+
+Different species observed:
+```{r}
+barplot_data <- observations_artis %>% filter(!is.na(scientificName))
+
+# Count occurrences of each scientific name
+scientificName_counts <- barplot_data %>% 
+  group_by(scientificName) %>% 
+  summarise(count = n())
+scientificName_counts <- scientificName_counts %>% 
+  arrange(desc(count))
+# Plot the result with gradient fill color
+ggplot(scientificName_counts, aes(x = reorder(scientificName, -count), y = count, fill = count)) +
+  geom_bar(stat = "identity") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") + # Gradient fill color
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "Scientific Name", y = "Count", title = "Observations of Different Species")
+```
+Amount of different species:
+```{r}
+# Count the number of different species
+num_species <- barplot_data%>% 
+  distinct(scientificName) %>%  
+  nrow() 
+cat("Number of different species observed:", num_species, "\n")
+
+```
+## Deployments
+Slice of the deployments dataframe:
+```{r, echo=FALSE}
+knitr::kable(deployments_artis[0:6, 0:4])
+knitr::kable(deployments_artis[0:6, 5:9])
+knitr::kable(deployments_artis[0:6, 10:15])
+```
+Column explanations:
+```{r,results='asis'}
+cat("| Name              | Definition                                                                                         | Type   |
+|-------------------|----------------------------------------------------------------------------------------------------|--------|
+| deploymentID      | Unique identifier of the deployment.                                                               | string |
+| locationID        | Identifier of the deployment location.                                                             | string |
+| locationName      | Name given to the deployment location.                                                             | string |
+| latitude          | Latitude of the deployment location in decimal degrees, using the WGS84 datum.                     | number |
+| longitude         | Longitude of the deployment location in decimal degrees, using the WGS84 datum.                    | number |
+| coordinateUncertainty | Horizontal distance from the given latitude and longitude describing the smallest circle containing the deployment location. Expressed in meters. Especially relevant when coordinates are rounded to protect sensitive species. | integer |
+| deploymentStart   | Date and time at which the deployment was started. Formatted as an ISO 8601 string with timezone designator (YYYY-MM-DDThh:mm:ssZ or YYYY-MM-DDThh:mm:ss±hh:mm). | datetime |
+| deploymentEnd     | Date and time at which the deployment was ended. Formatted as an ISO 8601 string with timezone designator (YYYY-MM-DDThh:mm:ssZ or YYYY-MM-DDThh:mm:ss±hh:mm). | datetime |
+| setupBy           | Name or identifier of the person or organization that deployed the camera.                         | string |
+| cameraID          | Identifier of the camera used for the deployment (e.g. the camera device serial number).           | string |
+| cameraModel       | Manufacturer and model of the camera. Formatted as manufacturer-model.                             | string |
+| cameraDelay       | Predefined duration after detection when further activity is ignored. Expressed in seconds.        | integer |
+| cameraHeight      | Height at which the camera was deployed. Expressed in meters. Not to be combined with cameraDepth. | number |
+| cameraDepth       | Depth at which the camera was deployed. Expressed in meters. Not to be combined with cameraHeight. | number |
+| cameraTilt        | Angle at which the camera was deployed in the vertical plane. Expressed in degrees, with -90 facing down, 0 horizontal and 90 facing up. | integer |
+| cameraHeading     | Angle at which the camera was deployed in the horizontal plane. Expressed in decimal degrees clockwise from north, with values ranging from 0 to 360: 0 = north, 90 = east, 180 = south, 270 = west. | integer |
+| detectionDistance | Maximum distance at which the camera can reliably detect activity. Expressed in meters.            | number |
+| timestampIssues   | true if timestamps in the media resource for the deployment are known to have (unsolvable) issues (e.g. unknown timezone, am/pm switch). | boolean |
+| baitUse           | true if bait was used for the deployment. More information can be provided in tags or comments.    | boolean |
+| featureType       | Type of the feature (if any) associated with the deployment.                                        | string |
+| habitat           | Short characterization of the habitat at the deployment location.                                    | string |
+| deploymentGroups  | Deployment group(s) associated with the deployment.                                                 | string |
+| deploymentTags    | Tag(s) associated with the deployment.                                                             | string |
+| deploymentComments| Comments or notes about the deployment.                                                            | string |")
+
+```
+NaN Analysis:
+```{r}
+colSums(is.na(deployments_artis))
+```
+As we can see not many columns contain NaN entries, only 'locationID', 'habitatType', 'doploymentTags' and 'deploymentComments' with only NaN entries.
+We have 21 different camera deployments in our dataset.
+
+Now it would be interesting to look at the deployment locations of the individual cameras:
+```{r, echo=T, results='hide'}
+deployments_artis$time_active <- deployments_artis$deploymentEnd - deployments_artis$deploymentStart
+deployments_artis$time_active <- as.numeric(deployments_artis$time_active)
+
+locations <- deployments_artis[c("deploymentID","longitude", "latitude")]
+locations_sf <- st_as_sf(locations,
+                         coords = c("longitude", "latitude"),
+                         crs = 4326)
+
+locations_basemap <- get_tiles(locations_sf, provider = "Esri.WorldTopoMap")
+# plot(locations_basemap)
+# plot(locations_sf, col = "red", pch = 16, add =T)
+```
+![](Plots/CameraLocationsMapArtis.png)
+Summarizing the distances between cameras:
+```{r}
+distance_matrix <- st_distance(locations_sf)
+diag(distance_matrix) <- NA
+summary(as.vector(distance_matrix))
+```
+Now to look at the deployment duration for possible gaps:
+```{r}
+par(mar=c(4,8,1,1))
+plot(0,
+     type="n",
+     xlim=c(min(deployments_artis$deploymentStart),max(deployments_artis$deploymentEnd)),
+     ylim=c(1,nrow(locations)),
+     yaxt="n",
+     xaxt="n",
+     xlab="Date",
+     ylab=""
+)
+axis.Date(1,format="%Y-%m")
+axis(2,at=c(1:nrow(locations)),labels=locations$deploymentID,las=1)
+for(i in 1:nrow(deployments_artis)){
+  curr_deployment = deployments_artis[i,]
+  location_ind = which(locations$deploymentID==curr_deployment$deploymentID)
+  lines(x=c(curr_deployment$deploymentStart,curr_deployment$deploymentEnd),
+        y=c(location_ind,location_ind),
+        lwd=2)
+}
+
+```
+
+
+\
+Adding on Observation occurences
+```{r}
+observations_artis$date <- as.Date(observations_artis$eventStart)
+
+obs_deploy_index <- match(observations_artis$deploymentID,deployments_artis$deploymentID)
+observations_artis$deploymentID <- deployments_artis$deploymentID[obs_deploy_index]
+obs_place_ind = match(observations_artis$deploymentID,locations$deploymentID)
+# points(observations_artis$date,obs_place_ind,col="red",pch=16)
+```
+![](Plots/CameraActivityWithObservations.png)
+Seeing this plot we now know that observations stopped being annotated after the end of 2022, meaning we have no data from 2023 onwards and we can drop the upper camera since there is no observation data available.
+
+```{r}
+deployments_artis$deploymentEnd[deployments_artis$deploymentEnd > as.Date('2023-01-01')] <- as.Date('2023-01-01')
+deployments_artis <- deployments_artis[deployments_artis$deploymentID != "artis_20_03272023_wildlifecamera1", ]
+observations_artis <- observations_artis[observations_artis$deploymentID != "artis_20_03272023_wildlifecamera1", ]
+```
+
+
+Looking at the number of detections and pictures taken per deployment:
+```{r}
+det_per_deployment <- aggregate(
+  count~deploymentID,
+  FUN=sum,
+  data=observations_artis)
+
+pic_per_location<-aggregate(
+  count~deploymentID,#number of objects (in a picture) BY deployment
+  FUN=length,
+  data=observations_artis)
+
+combined_data <- merge(pic_per_location, det_per_deployment, by = "deploymentID", suffixes = c("_pic", "_det"))
+combined_data$det_rate <- combined_data$count_det / combined_data$count_pic
+combined_data$det_rate <- round(combined_data$det_rate, 2)
+
+combined_data
+
+```
+We see that there's always less detections made than pictures taken, this means that sometimes a camera takes a picture when nothing is detected. The detection rate is the ratio of detections/picture. A low value means a camera shoots many blanks, and a high ratio means that almost wevery time a picture is taken, a detection is made.
+
+We can also plot the amount of unique species observed against the number of days a deployment has been active:
+```{r}
+for(deployment_artis in deployments_artis$deploymentID){
+  deployment_obs <- observations_artis$scientificName[observations_artis$deploymentID==deployment_artis]
+  uni_obs <- unique(deployment_obs)
+  n_uni_obs <- length(uni_obs)
+  deployments_artis$n_species[deployments_artis$deploymentID==deployment_artis] <- n_uni_obs
+}
+plot(n_species~time_active,
+     data=deployments_artis,
+     #solid point symbol
+     pch=16,
+     #axis labels
+     xlab="Days active",
+     ylab="n. species detected")
+
+```
+\
+
+From this plot we can see a vague positive correlation between the two, but it is not necesarrily what we expect. We expect a clear line with species detected increasing as days active increases, bit this isn't exactly the case. This means other factors greatly influence the amount of species detected for a deployment!
